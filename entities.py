@@ -25,6 +25,10 @@ from settings import (
     ASTEROID_SAFE_DISTANCE,
     ASTEROID_COLOR,
     ASTEROID_OUTLINE,
+    MISSILE_SPEED,
+    MISSILE_LIFETIME,
+    MISSILE_RADIUS,
+    MISSILE_COLOR,
 )
 
 
@@ -252,3 +256,53 @@ class Asteroid(GameObject):
                 position, ship_position
             ) >= ASTEROID_SAFE_DISTANCE:
                 return cls(position)
+
+
+class Missile(GameObject):
+    """A short-lived projectile fired by the ship."""
+
+    def __init__(self, ship):
+        """Create a missile at the nose of the ship."""
+        direction = ship.direction()
+
+        position = (
+            ship.position + direction * (SHIP_SIZE + 5)
+        )
+
+        velocity = direction * MISSILE_SPEED
+
+        super().__init__(
+            position,
+            velocity,
+            ship.angle,
+            MISSILE_RADIUS,
+        )
+
+        self.age = 0.0
+        self.image = self.create_image()
+        self.wrap_position()
+
+    @staticmethod
+    def create_image():
+        """Create the projectile sprite."""
+        surface = pygame.Surface(
+            (14, 8), pygame.SRCALPHA
+        )
+
+        pygame.draw.ellipse(
+            surface,
+            MISSILE_COLOR,
+            (0, 1, 14, 6),
+        )
+
+        return surface
+
+    @property
+    def alive(self):
+        """Check whether the missile lifetime has expired."""
+        return self.age < MISSILE_LIFETIME
+
+    def update(self, dt):
+        """Move the missile and increase its age."""
+        super().update(dt)
+        self.age += dt
