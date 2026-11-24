@@ -2,10 +2,17 @@
 
 import math
 import random
+from pathlib import Path
 
 import pygame
 
-from entities import Ship, Asteroid, Missile, collides
+from entities import (
+    Ship,
+    Asteroid,
+    Missile,
+    Explosion,
+    collides,
+)
 
 from settings import (
     WIDTH,
@@ -55,6 +62,13 @@ class Game:
         self.score = INITIAL_SCORE
         self.lives = INITIAL_LIVES
         self.playing = True
+        self.explosions = []
+
+        assets = Path(__file__).resolve().parent / "assets"
+
+        self.explosion_sheet = pygame.image.load(
+            assets / "explosion.png"
+        ).convert_alpha()
 
         self.font = pygame.font.Font(
             None, HUD_FONT_SIZE
@@ -130,6 +144,13 @@ class Game:
         for missile in self.missiles[:]:
             for asteroid in self.asteroids[:]:
                 if collides(missile, asteroid):
+                    self.explosions.append(
+                        Explosion(
+                            asteroid.position,
+                            self.explosion_sheet,
+                        )
+                    )
+
                     self.missiles.remove(missile)
                     self.asteroids.remove(asteroid)
                     self.score += 1
@@ -137,6 +158,13 @@ class Game:
 
         for asteroid in self.asteroids[:]:
             if collides(self.ship, asteroid):
+                self.explosions.append(
+                    Explosion(
+                        asteroid.position,
+                        self.explosion_sheet,
+                    )
+                )
+
                 self.asteroids.remove(asteroid)
 
                 if self.lives == 0:
@@ -179,6 +207,15 @@ class Game:
         """Update background position."""
         self.background_offset += BACKGROUND_SPEED * dt
         self.background_offset %= WIDTH
+
+        for explosion in self.explosions:
+            explosion.update(dt)
+
+        self.explosions = [
+            explosion
+            for explosion in self.explosions
+            if explosion.alive
+        ]
 
         if not self.playing:
             return
@@ -235,6 +272,9 @@ class Game:
                 missile.draw(self.screen)
 
             self.ship.draw(self.screen)
+
+        for explosion in self.explosions:
+            explosion.draw(self.screen)
 
         self.draw_hud()
 

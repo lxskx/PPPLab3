@@ -6,6 +6,12 @@ import random
 import pygame
 
 from settings import (
+    EXPLOSION_FRAME_SIZE,
+    EXPLOSION_FRAMES,
+    EXPLOSION_FPS,
+)
+
+from settings import (
     WIDTH,
     HEIGHT,
     SHIP_SIZE,
@@ -316,3 +322,108 @@ def collides(first, second):
     )
 
     return distance <= first.radius + second.radius
+
+
+class Explosion:
+    """A frame-by-frame explosion animation."""
+
+    def __init__(self, position, sheet):
+        """Initialize an explosion at a given position."""
+        self.position = pygame.Vector2(position)
+        self.sheet = sheet
+        self.age = 0.0
+
+    @staticmethod
+    def build_sheet():
+        """Generate a horizontal sprite sheet of explosion frames."""
+        size = EXPLOSION_FRAME_SIZE
+
+        sheet = pygame.Surface(
+            (size * EXPLOSION_FRAMES, size),
+            pygame.SRCALPHA,
+        )
+
+        center = size // 2
+
+        for i in range(EXPLOSION_FRAMES):
+            progress = i / (EXPLOSION_FRAMES - 1)
+
+            frame = pygame.Surface(
+                (size, size),
+                pygame.SRCALPHA,
+            )
+
+            radius = int(5 + progress * 35)
+            alpha = int(255 * (1 - progress))
+
+            pygame.draw.circle(
+                frame,
+                (255, 75, 20, alpha),
+                (center, center),
+                radius,
+                3,
+            )
+
+            pygame.draw.circle(
+                frame,
+                (255, 170, 35, alpha),
+                (center, center),
+                max(1, int(radius * 0.65)),
+            )
+
+            pygame.draw.circle(
+                frame,
+                (255, 240, 170, alpha),
+                (center, center),
+                max(1, int(radius * 0.3)),
+            )
+
+            for j in range(10):
+                angle = j * 2 * math.pi / 10
+                distance = radius * 1.05
+
+                x = center + math.cos(angle) * distance
+                y = center + math.sin(angle) * distance
+
+                pygame.draw.circle(
+                    frame,
+                    (255, 200, 80, alpha),
+                    (round(x), round(y)),
+                    2,
+                )
+
+            sheet.blit(frame, (i * size, 0))
+
+        return sheet
+
+    @property
+    def frame_index(self):
+        """Return the current animation frame number."""
+        return int(self.age * EXPLOSION_FPS)
+
+    @property
+    def alive(self):
+        """Check whether the animation is still playing."""
+        return self.frame_index < EXPLOSION_FRAMES
+
+    def update(self, dt):
+        """Advance the animation time."""
+        self.age += dt
+
+    def draw(self, screen):
+        """Draw the current frame of the sprite sheet."""
+        if not self.alive:
+            return
+
+        size = EXPLOSION_FRAME_SIZE
+
+        rect = pygame.Rect(
+            self.frame_index * size,
+            0,
+            size,
+            size,
+        )
+
+        frame = self.sheet.subsurface(rect)
+
+        draw_wrapped(screen, frame, self.position)
