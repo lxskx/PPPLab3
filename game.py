@@ -5,6 +5,8 @@ import random
 
 import pygame
 
+from entities import Ship
+
 from settings import (
     WIDTH,
     HEIGHT,
@@ -36,6 +38,7 @@ class Game:
         self.background = self.create_background()
         self.asteroid_layer = self.create_asteroid_layer()
         self.background_offset = 0.0
+        self.ship = Ship()
 
     def create_background(self):
         """Create a stationary background with stars."""
@@ -107,6 +110,9 @@ class Game:
         self.background_offset += BACKGROUND_SPEED * dt
         self.background_offset %= WIDTH
 
+        keys = pygame.key.get_pressed()
+        self.ship.control(keys, dt)
+
     def draw(self):
         """Draw the stationary and moving backgrounds."""
         self.screen.blit(self.background, (0, 0))
@@ -119,12 +125,14 @@ class Game:
             self.asteroid_layer, (WIDTH - offset, 0)
         )
 
+        self.ship.draw(self.screen)
+
         pygame.display.flip()
 
     def run(self):
         """Run the main game loop."""
         while self.running:
-            dt = self.clock.tick(FPS) / 1000
+            dt = min(self.clock.tick(FPS) / 1000, 0.05)
 
             self.handle_events()
             self.update(dt)
