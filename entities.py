@@ -306,3 +306,13 @@ class Missile(GameObject):
         """Move the missile and increase its age."""
         super().update(dt)
         self.age += dt
+
+
+def collides(first, second):
+    """Check collision between two circular hitboxes."""
+    distance = toroidal_distance(
+        first.position,
+        second.position,
+    )
+
+    return distance <= first.radius + second.radius

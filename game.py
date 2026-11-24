@@ -5,7 +5,7 @@ import random
 
 import pygame
 
-from entities import Ship, Asteroid, Missile
+from entities import Ship, Asteroid, Missile, collides
 
 from settings import (
     WIDTH,
@@ -22,6 +22,11 @@ from settings import (
     ASTEROID_SPAWN_INTERVAL,
     MAX_ASTEROIDS,
     MISSILE_COOLDOWN,
+    INITIAL_LIVES,
+    INITIAL_SCORE,
+    HUD_FONT_SIZE,
+    HUD_COLOR,
+    HUD_MARGIN,
 )
 
 
@@ -46,6 +51,14 @@ class Game:
         self.spawn_timer = 0.0
         self.missiles = []
         self.shot_timer = 0.0
+
+        self.score = INITIAL_SCORE
+        self.lives = INITIAL_LIVES
+        self.playing = True
+
+        self.font = pygame.font.Font(
+            None, HUD_FONT_SIZE
+        )
 
     def create_background(self):
         """Create a stationary background with stars."""
@@ -112,10 +125,63 @@ class Game:
                 if event.key == pygame.K_ESCAPE:
                     self.running = False
 
+    def check_collisions(self):
+        """Handle projectile and spaceship collisions."""
+        for missile in self.missiles[:]:
+            for asteroid in self.asteroids[:]:
+                if collides(missile, asteroid):
+                    self.missiles.remove(missile)
+                    self.asteroids.remove(asteroid)
+                    self.score += 1
+                    break
+
+        for asteroid in self.asteroids[:]:
+            if collides(self.ship, asteroid):
+                self.asteroids.remove(asteroid)
+
+                if self.lives == 0:
+                    self.playing = False
+                    self.asteroids.clear()
+                    self.missiles.clear()
+                else:
+                    self.lives -= 1
+                    self.ship = Ship()
+
+                break
+
+    def draw_hud(self):
+        """Display score and remaining lives."""
+        score = self.font.render(
+            f"SCORE: {self.score}",
+            True,
+            HUD_COLOR,
+        )
+
+        lives = self.font.render(
+            f"LIVES: {self.lives}",
+            True,
+            HUD_COLOR,
+        )
+
+        self.screen.blit(
+            score, (HUD_MARGIN, HUD_MARGIN)
+        )
+
+        self.screen.blit(
+            lives,
+            (
+                WIDTH - lives.get_width() - HUD_MARGIN,
+                HUD_MARGIN,
+            ),
+        )
+
     def update(self, dt):
         """Update background position."""
         self.background_offset += BACKGROUND_SPEED * dt
         self.background_offset %= WIDTH
+
+        if not self.playing:
+            return
 
         keys = pygame.key.get_pressed()
         self.ship.control(keys, dt)
@@ -147,6 +213,8 @@ class Game:
             if missile.alive
         ]
 
+        self.check_collisions()
+
     def draw(self):
         """Draw the stationary and moving backgrounds."""
         self.screen.blit(self.background, (0, 0))
@@ -159,13 +227,16 @@ class Game:
             self.asteroid_layer, (WIDTH - offset, 0)
         )
 
-        for asteroid in self.asteroids:
-            asteroid.draw(self.screen)
+        if self.playing:
+            for asteroid in self.asteroids:
+                asteroid.draw(self.screen)
 
-        for missile in self.missiles:
-            missile.draw(self.screen)
+            for missile in self.missiles:
+                missile.draw(self.screen)
 
-        self.ship.draw(self.screen)
+            self.ship.draw(self.screen)
+
+        self.draw_hud()
 
         pygame.display.flip()
 
