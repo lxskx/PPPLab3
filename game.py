@@ -5,7 +5,7 @@ import random
 
 import pygame
 
-from entities import Ship
+from entities import Ship, Asteroid
 
 from settings import (
     WIDTH,
@@ -19,6 +19,8 @@ from settings import (
     BACKGROUND_SPEED,
     BACKGROUND_ALPHA,
     BACKGROUND_SEED,
+    ASTEROID_SPAWN_INTERVAL,
+    MAX_ASTEROIDS,
 )
 
 
@@ -39,6 +41,8 @@ class Game:
         self.asteroid_layer = self.create_asteroid_layer()
         self.background_offset = 0.0
         self.ship = Ship()
+        self.asteroids = []
+        self.spawn_timer = 0.0
 
     def create_background(self):
         """Create a stationary background with stars."""
@@ -113,6 +117,18 @@ class Game:
         keys = pygame.key.get_pressed()
         self.ship.control(keys, dt)
 
+        self.spawn_timer += dt
+
+        if self.spawn_timer >= ASTEROID_SPAWN_INTERVAL:
+            self.spawn_timer -= ASTEROID_SPAWN_INTERVAL
+
+            if len(self.asteroids) < MAX_ASTEROIDS:
+                asteroid = Asteroid.spawn(self.ship.position)
+                self.asteroids.append(asteroid)
+
+        for asteroid in self.asteroids:
+            asteroid.update(dt)
+
     def draw(self):
         """Draw the stationary and moving backgrounds."""
         self.screen.blit(self.background, (0, 0))
@@ -124,6 +140,9 @@ class Game:
         self.screen.blit(
             self.asteroid_layer, (WIDTH - offset, 0)
         )
+
+        for asteroid in self.asteroids:
+            asteroid.draw(self.screen)
 
         self.ship.draw(self.screen)
 

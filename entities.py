@@ -1,5 +1,8 @@
 """Classes and helper functions for game objects."""
 
+import math
+import random
+
 import pygame
 
 from settings import (
@@ -14,6 +17,14 @@ from settings import (
     SHIP_STOP_SPEED,
     SHIP_COLOR,
     ENGINE_COLOR,
+    ASTEROID_MIN_RADIUS,
+    ASTEROID_MAX_RADIUS,
+    ASTEROID_MIN_SPEED,
+    ASTEROID_MAX_SPEED,
+    ASTEROID_ROTATION_SPEED,
+    ASTEROID_SAFE_DISTANCE,
+    ASTEROID_COLOR,
+    ASTEROID_OUTLINE,
 )
 
 
@@ -149,3 +160,95 @@ class Ship(GameObject):
             self.velocity.scale_to_length(SHIP_MAX_SPEED)
 
         self.update(dt)
+
+
+def toroidal_distance(first, second):
+    """Calculate the shortest distance on the wrapped field."""
+    dx = abs(first.x - second.x)
+    dy = abs(first.y - second.y)
+
+    dx = min(dx, WIDTH - dx)
+    dy = min(dy, HEIGHT - dy)
+
+    return math.hypot(dx, dy)
+
+
+class Asteroid(GameObject):
+    """A randomly generated moving asteroid."""
+
+    def __init__(self, position):
+        """Initialize random size, movement and rotation."""
+        radius = random.randint(
+            ASTEROID_MIN_RADIUS,
+            ASTEROID_MAX_RADIUS,
+        )
+
+        direction = random.uniform(0, 360)
+
+        speed = random.uniform(
+            ASTEROID_MIN_SPEED,
+            ASTEROID_MAX_SPEED,
+        )
+
+        velocity = pygame.Vector2(speed, 0).rotate(
+            direction
+        )
+
+        super().__init__(
+            position,
+            velocity,
+            random.uniform(0, 360),
+            radius,
+        )
+
+        self.angular_velocity = random.uniform(
+            -ASTEROID_ROTATION_SPEED,
+            ASTEROID_ROTATION_SPEED,
+        )
+
+        self.image = self.create_image()
+
+    def create_image(self):
+        """Create an irregular rocky asteroid image."""
+        radius = self.radius
+        size = radius * 2 + 8
+        center = size // 2
+
+        surface = pygame.Surface(
+            (size, size), pygame.SRCALPHA
+        )
+
+        points = []
+
+        for i in range(11):
+            angle = 2 * math.pi * i / 11
+            distance = radius * random.uniform(0.7, 1.0)
+
+            x = center + math.cos(angle) * distance
+            y = center + math.sin(angle) * distance
+
+            points.append((round(x), round(y)))
+
+        pygame.draw.polygon(
+            surface, ASTEROID_COLOR, points
+        )
+
+        pygame.draw.polygon(
+            surface, ASTEROID_OUTLINE, points, 2
+        )
+
+        return surface
+
+    @classmethod
+    def spawn(cls, ship_position):
+        """Spawn an asteroid away from the player's ship."""
+        while True:
+            position = pygame.Vector2(
+                random.randrange(WIDTH),
+                random.randrange(HEIGHT),
+            )
+
+            if toroidal_distance(
+                position, ship_position
+            ) >= ASTEROID_SAFE_DISTANCE:
+                return cls(position)
