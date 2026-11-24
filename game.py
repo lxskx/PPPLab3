@@ -5,6 +5,7 @@ import random
 from pathlib import Path
 
 import pygame
+import settings as cfg
 
 from entities import (
     Ship,
@@ -61,7 +62,27 @@ class Game:
 
         self.score = INITIAL_SCORE
         self.lives = INITIAL_LIVES
-        self.playing = True
+        self.playing = False
+        self.has_played = False
+
+        self.splash_rect = pygame.Rect(
+            0, 0,
+            cfg.SPLASH_WIDTH,
+            cfg.SPLASH_HEIGHT,
+        )
+
+        self.splash_rect.center = (
+            cfg.WIDTH // 2,
+            cfg.HEIGHT // 2,
+        )
+
+        self.title_font = pygame.font.Font(
+            None, cfg.SPLASH_TITLE_SIZE
+        )
+
+        self.splash_font = pygame.font.Font(
+            None, cfg.SPLASH_TEXT_SIZE
+        )
         self.explosions = []
 
         assets = Path(__file__).resolve().parent / "assets"
@@ -132,12 +153,89 @@ class Game:
     def handle_events(self):
         """Process window and keyboard events."""
         for event in pygame.event.get():
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if (
+                    event.button == 1
+                    and not self.playing
+                    and not getattr(self, "explosions", [])
+                    and self.splash_rect.collidepoint(event.pos)
+                ):
+                    self.start_game()
+
             if event.type == pygame.QUIT:
                 self.running = False
 
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
                     self.running = False
+
+    def start_game(self):
+        """Start a new game session."""
+        self.ship = Ship()
+        self.asteroids.clear()
+        self.missiles.clear()
+
+        if hasattr(self, "explosions"):
+            self.explosions.clear()
+
+        self.score = cfg.INITIAL_SCORE
+        self.lives = cfg.INITIAL_LIVES
+        self.spawn_timer = 0.0
+        self.shot_timer = 0.0
+        self.playing = True
+        self.has_played = True
+
+    def draw_splash(self):
+        """Draw the central game splash screen."""
+        pygame.draw.rect(
+            self.screen,
+            cfg.SPLASH_BACKGROUND,
+            self.splash_rect,
+            border_radius=16,
+        )
+
+        pygame.draw.rect(
+            self.screen,
+            cfg.SPLASH_BORDER,
+            self.splash_rect,
+            width=2,
+            border_radius=16,
+        )
+
+        if self.has_played:
+            heading = "GAME OVER"
+            subtitle = f"Final score: {self.score}"
+            action = "Click here to play again"
+        else:
+            heading = "ASTEROIDS"
+            subtitle = "Survive the asteroid field"
+            action = "Click here to start"
+
+        lines = [
+            (heading, self.title_font, 58),
+            (subtitle, self.splash_font, 120),
+            ("LEFT / RIGHT - Rotate",
+             self.splash_font, 169),
+            ("UP - Thrust",
+             self.splash_font, 200),
+            ("SPACE - Fire",
+             self.splash_font, 231),
+            (action, self.splash_font, 278),
+        ]
+
+        for label, font, offset in lines:
+            image = font.render(
+                label, True, cfg.SPLASH_ACCENT
+            )
+
+            rect = image.get_rect(
+                center=(
+                    self.splash_rect.centerx,
+                    self.splash_rect.top + offset,
+                )
+            )
+
+            self.screen.blit(image, rect)
 
     def check_collisions(self):
         """Handle projectile and spaceship collisions."""
@@ -277,6 +375,12 @@ class Game:
             explosion.draw(self.screen)
 
         self.draw_hud()
+
+        if (
+            not self.playing
+            and not getattr(self, "explosions", [])
+        ):
+            self.draw_splash()
 
         pygame.display.flip()
 
